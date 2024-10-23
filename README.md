@@ -21,8 +21,9 @@ The goal of ggcorrelate is to …
     reference for other ggplot2 stats extenders in stats education.
     Check out [source](./README.Rmd)
 
-Only interested in the proposed convenience layers? Jump to [traditional
-readme.](#traditional-readme)
+Only interested in the proposed convenience layers? Jump to [layers
+usage examples](#layers%20usage) or the [traditional
+readme](#traditional-readme)
 
 ### Step 00. Create this readme
 
@@ -254,6 +255,7 @@ compute_covariance <- function(data, scales){
   xmean = mean(data$x)
   ymean = mean(data$y)
   xsd = sd(data$x)
+  ysd = sd(data$y)
   
   data |> 
     dplyr::mutate(xdiff = x - mean(x),                                
@@ -267,7 +269,8 @@ compute_covariance <- function(data, scales){
   
   data.frame(xmin = xmean, ymin = ymean,
              xmax = xmean + xsd, ymax = ymean + mean_area/xsd,
-             covariance = mean_area) %>% 
+             covariance = mean_area,
+             correlation = mean_area/(xsd*ysd)) %>% 
     mutate(sign = ifelse(mean_area < 0, "Neg", "Pos"),
            sign = factor(sign, sign_levels)) |>
     mutate(x = (xmin + xmax)/2,
@@ -297,6 +300,20 @@ geom_covariance_label <- function(...){
   QS <- qstat(compute_covariance,
                  default_aes = 
                    aes(label = round(after_stat(covariance), 2))
+                 )
+                                   
+  geom_label(stat = QS,
+             show.legend = F,
+                         ...)
+  
+}
+
+#' @export
+geom_correlation_label <- function(...){
+  
+  QS <- qstat(compute_covariance,
+                 default_aes = 
+                   aes(label = round(after_stat(correlation), 3))
                  )
                                    
   geom_label(stat = QS,
@@ -363,13 +380,16 @@ scale_fill_corr <- function(...){scale_fill_manual(values = c("lightcoral","medi
 
 scale_color_fill_corr <- function(){
   
-  scale_color_fill_corr()
+  list(
+    scale_fill_corr(),
+    scale_color_corr()
+  )
   
   
 }
 ```
 
-## Use the layers…
+## layers usage
 
 ``` r
 set.seed(12345)
@@ -384,18 +404,18 @@ cars |>
   geom_ymeandiff() + # 4
   geom_xydiffs() + # 5
   geom_covariance() + #6
-  geom_covariance_label() + #7
-  geom_x_sd() + 
-  geom_y_sd()
+  geom_covariance_label() 
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 
-last_plot() + 
-  aes(x = speed/sd(speed), 
-      y = dist/sd(dist))
+
+last_plot() + #7
+  geom_x_sd() + 
+  geom_y_sd() + 
+  geom_correlation_label()
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
@@ -414,13 +434,41 @@ anscombe |>
   geom_xydiffs() + # 5
   geom_covariance() + #6
   geom_covariance_label() + #7
-  geom_x_sd() + 
-  geom_y_sd() + 
   scale_fill_corr() + 
   scale_color_corr()
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+
+``` r
+
+last_plot() + 
+  geom_x_sd() + 
+  geom_y_sd() + 
+  geom_correlation_label()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-7-4.png)<!-- -->
+
+``` r
+
+# variance and sd
+anscombe |>
+  ggplot() + 
+  aes(x = x1, y = x1) +
+  coord_equal() +
+  geom_point() + # x, y  0
+  geom_xmean() + # x-bar 1
+  geom_ymean() + # y-bar 2
+  geom_xmeandiff() + # 3
+  geom_ymeandiff() + # 4
+  geom_xydiffs() + # 5
+  geom_covariance() + # i.e. variance
+  geom_covariance_label() +
+  scale_color_fill_corr()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-7-5.png)<!-- -->
 
 ``` r
 knitrExtra:::chunk_to_r("layers_wrap")
@@ -439,9 +487,24 @@ layers_covariance <- function(){
   geom_ymeandiff(),
   geom_xydiffs(),
   geom_covariance(),
-  geom_covariance_label(),
+  geom_covariance_label())
+  
+}
+
+#' @export
+layers_correlation <- function(){
+  
+  list(
+  geom_point(),
+  geom_xmean(),
+  geom_ymean(),
+  geom_xmeandiff(),
+  geom_ymeandiff(),
+  geom_xydiffs(),
   geom_x_sd(),
-  geom_y_sd())
+  geom_y_sd(),
+  geom_covariance(),
+  geom_correlation_label())
   
 }
 ```
@@ -454,6 +517,16 @@ cars |>
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+
+cars |>
+  ggplot() + 
+  aes(x = speed, y = dist) + 
+  layers_correlation()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-9-2.png)<!-- -->
 
 # Minimal viable package
 
@@ -518,8 +591,8 @@ datasaurus_dozen |>
 ``` r
 
 last_plot() + 
-  aes(x = x/sd(x), 
-      y = y/sd(y))
+  geom_x_sd() + geom_y_sd() +
+  geom_correlation_label()
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-12-2.png)<!-- -->
@@ -548,8 +621,11 @@ head(anscombe_long)
 
 ``` r
 
-last_plot() %+%
-  anscombe_long
+anscombe_long |>
+  ggplot() + 
+  aes(x, y) + 
+  facet_wrap(facet = vars(dataset)) +
+  layers_correlation() 
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-12-3.png)<!-- -->

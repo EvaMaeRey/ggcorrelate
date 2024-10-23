@@ -127,6 +127,7 @@ compute_covariance <- function(data, scales){
   xmean = mean(data$x)
   ymean = mean(data$y)
   xsd = sd(data$x)
+  ysd = sd(data$y)
   
   data |> 
     dplyr::mutate(xdiff = x - mean(x),                                
@@ -140,7 +141,8 @@ compute_covariance <- function(data, scales){
   
   data.frame(xmin = xmean, ymin = ymean,
              xmax = xmean + xsd, ymax = ymean + mean_area/xsd,
-             covariance = mean_area) %>% 
+             covariance = mean_area,
+             correlation = mean_area/(xsd*ysd)) %>% 
     mutate(sign = ifelse(mean_area < 0, "Neg", "Pos"),
            sign = factor(sign, sign_levels)) |>
     mutate(x = (xmin + xmax)/2,
@@ -170,6 +172,20 @@ geom_covariance_label <- function(...){
   QS <- qstat(compute_covariance,
                  default_aes = 
                    aes(label = round(after_stat(covariance), 2))
+                 )
+                                   
+  geom_label(stat = QS,
+             show.legend = F,
+                         ...)
+  
+}
+
+#' @export
+geom_correlation_label <- function(...){
+  
+  QS <- qstat(compute_covariance,
+                 default_aes = 
+                   aes(label = round(after_stat(correlation), 3))
                  )
                                    
   geom_label(stat = QS,
