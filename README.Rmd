@@ -25,7 +25,7 @@ The goal of ggcorrelate is to ...
 2. Explore new ways of writing convenience layers with ggplot2 extension shorthand used - 'express' methodologies
 3. Document this exploration and retain the narrative by including all the code in the readme, to allow for discussion, vetting, ease for contribution, and in the future, if deemed sound, provide how-to reference for other ggplot2 stats extenders in stats education. Check out [source](./README.Rmd)
 
-Only interested in the proposed convenience layers? Jump to [layers usage examples](#layers usage) or the [traditional readme](#traditional-readme)
+Only interested in the proposed convenience layers? Jump to [layers usage examples](#layers-usage) or the [traditional readme](#traditional-readme)
 
 ### Step 00. Create this readme
 

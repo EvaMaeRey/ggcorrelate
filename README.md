@@ -22,7 +22,7 @@ The goal of ggcorrelate is to …
     Check out [source](./README.Rmd)
 
 Only interested in the proposed convenience layers? Jump to [layers
-usage examples](#layers%20usage) or the [traditional
+usage examples](#layers-usage) or the [traditional
 readme](#traditional-readme)
 
 ### Step 00. Create this readme
