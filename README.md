@@ -4,50 +4,78 @@
 # ggcorrelate
 
 <!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
 The goal of ggcorrelate is to …
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
+1.  provide convenience layers for visually exploring covariance,
+    variance, standard deviation and pearson correlation
+2.  Explore new ways of writing convenience layers with ggplot2
+    extension shorthand used - ‘express’ methodologies
+3.  Document this exploration and retain the narrative by including all
+    the code in the readme, to allow for discussion, vetting, ease for
+    contribution, and in the future, if deemed sound, provide how-to
+    reference for other ggplot2 stats extenders in stats education.
+    Check out [source](./README.Rmd)
+
+Only interested in the proposed convenience layers? Jump to [traditional
+readme.](#traditional-readme)
+
+### Step 00. Create this readme
 
 ``` r
+# eval set to false for this chunk
+usethis::use_readme_rmd()
+```
+
+### Step 0. Create a package space with
+
+``` r
+# eval set to false for this chunk
 devtools::create(".")
+usethis::use_lifecycle_badge("experimental")
 ```
 
-# some express extension stuff
+### some express extension stuff
+
+Sometimes, you may be looking for a shortcut to writing ggplot2
+extension layers. This might enable you to think more about the
+computation you want to deliver and less about naming things. The
+approach we’ll use is the {statexpress} approach (also notable is
+stat_manual in base ggplot2 which allows group-wise computation). Once
+you’ve figured out the compute that’s necessary, you might circle back
+and classically create a stat.
+
+Instead of importing {statexpress}, we’ll just copy the functionality
+over here and you can have a look at it’s construction. {statexpress} is
+in a feedback welcome phase, so exposing some code here.
+
+Skip to the next section if you are more interested in the correlation
+exploration layers!
 
 ``` r
-library(tidyverse)
-#> ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-#> ✔ dplyr     1.1.4     ✔ readr     2.1.5
-#> ✔ forcats   1.0.0     ✔ stringr   1.5.1
-#> ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
-#> ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
-#> ✔ purrr     1.0.2     
-#> ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-#> ✖ dplyr::filter() masks stats::filter()
-#> ✖ dplyr::lag()    masks stats::lag()
-#> ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+# grabs code from 'expresshelpers' chunk below
+knitrExtra:::chunk_to_r("expresshelpers")
+#> It seems you are currently knitting a Rmd/Qmd file. The parsing of the file will be done in a new R session.
 ```
 
 ``` r
+# Some functionality that is being tried out in {statexpress}
 
 
-# express Stat setup.
-#' @export
+###############################################
+# qstat - an express method for creating Stats locally
+######################################
 qstat <- function(compute_group, ...){
   ggproto("StatTemp", Stat, compute_group = compute_group, ...)
   }
 
-#' @export
-qgeom_mod_default_aes <- function(`_inherit` = GeomPoint, default_aes = GeomPoint$default_aes, ...){
-  
-  ggproto("GeomTemp", `_inherit` = `_inherit`, default_aes = default_aes, ...)
-
-}
-
-#' @export
+################################
+# qlayer - a version of layer with more defaults
+###########################
 qlayer <- function (mapping = NULL, data = NULL, geom = "point", stat = "identity", position = "identity", 
     ..., na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) 
 {
@@ -56,7 +84,9 @@ qlayer <- function (mapping = NULL, data = NULL, geom = "point", stat = "identit
         params = rlang::list2(na.rm = na.rm, ...))
 }
 
-#' @export
+################################
+# proto_update - update default_aes quickly, based on existing defaults
+###########################
 proto_update <- function(`_class`, `_inherit`, default_aes_update = NULL, ...){
   
   if(!is.null(default_aes_update)){
@@ -71,7 +101,9 @@ proto_update <- function(`_class`, `_inherit`, default_aes_update = NULL, ...){
   
 }
 
-#' @export
+################################
+# qproto_update - update, defaults for ggplot2 object, and use locally
+###########################
 qproto_update <- function(`_inherit`, default_aes_update = NULL, ...){
   
   proto_update("protoTemp", 
@@ -83,24 +115,39 @@ qproto_update <- function(`_inherit`, default_aes_update = NULL, ...){
 
 ## write some layers
 
+Using qstat and qlayer and friends, we write some convenience layers
+that will help us visualize how we arrive at the covarience,
+correlation, etc.
+
 ``` r
-# Assume qlayer() and qstat() exists:
+knitrExtra:::chunk_to_r("layers")
+#> It seems you are currently knitting a Rmd/Qmd file. The parsing of the file will be done in a new R session.
+```
 
-# Layer 0 (actually don't use in var/sd/cov/corr/R^2 but demos qstat simplest usage)
+``` r
+######################################
+# Layer 0 (actually don't use in the statistical exploration, but it's a very simple case, so here for educational purposes)
+
 compute_group_xymean <- function(data, scales){
+  
   data |> mutate(x = mean(x), y = mean(y))
+  
   }
 
+#' @export
 geom_xy_means <- function(...){
+  
   geom_point(stat = qstat(compute_group_xymean), ...)
+  
   }
 
-
-# Layer 1
+######################################
+# Layer 1, geom_xmean
 compute_group_xmean <- function(data, scales){
-  data |> summarize(xintercept = mean(x))
+  data |> dplyr::summarize(xintercept = mean(x))
   }
 
+#' @export
 geom_xmean <- function(...){
   
   QStat <- qstat(compute_group_xmean, dropped_aes = c("x", "y"))
@@ -110,9 +157,12 @@ geom_xmean <- function(...){
   
   }
 
-# Layer 2
+######################################
+# Layer 2, geom_ymean
+
 compute_group_ymean <- function(data, scales){data |> summarize(yintercept = mean(y))}
 
+#' @export
 geom_ymean <- function(...){
   
   QStat <- qstat(compute_group_ymean, dropped_aes = c("x", "y"))
@@ -121,34 +171,46 @@ geom_ymean <- function(...){
   
   }
 
-# Layer 3
+######################################
+# Layer 3, geom_xmeandiff
 compute_group_xmeandiff <- function(data, scales){
+  
+  sign_levels <- c("Neg", "Pos")
   
   data |> mutate(xend = mean(x), 
                  yend = y, 
                  xdiff = x - mean(x), 
-                 sign = factor(sign(xdiff)))
+                 sign = ifelse(xdiff < 0, "Neg", "Pos"),
+                 sign = factor(sign, sign_levels)
+  )
   
   }
 
+#' @export
 geom_xmeandiff <- function(...){
   
+  
   QStat <- qstat(compute_group_xmeandiff, 
-              default_aes = aes(color = after_stat(sign)))
+                 default_aes = aes(color = after_stat(sign)))
   
   geom_segment(stat = QStat, ...)
   
   }
 
-# Layer 4
+######################################
+# Layer, geom_ymeandiff
 compute_group_ymeandiff <- function(data, scales){
   
+  sign_levels <- c("Neg", "Pos")
+
   data |> mutate(yend = mean(y), 
                  xend = x, 
                  ydiff = y - mean(y), 
-                 sign = factor(sign(ydiff)))
+                 sign = ifelse(ydiff < 0, "Neg", "Pos"),
+                 sign = factor(sign, sign_levels))
   }
 
+#' @export
 geom_ymeandiff <- function(...){
   
   QStat <- qstat(compute_group_ymeandiff, 
@@ -158,16 +220,20 @@ geom_ymeandiff <- function(...){
   
   }
 
-
-# Layer 5
+######################################
+# Layer, geom_xydiffs
 compute_group_xymeandiffs <- function(data, scales){
   
-  data |> mutate(xmin = mean(x), ymin = mean(y), 
+  sign_levels <- c("Neg", "Pos")
+
+  data |> dplyr::mutate(xmin = mean(x), ymin = mean(y), 
                  xmax = x, ymax = y, 
                  area = (xmax-xmin)*(ymax-ymin), 
-                 sign = factor(sign(area)))
+                 sign = ifelse(area < 0, "Neg", "Pos"),
+                 sign = factor(sign, sign_levels))
   }
 
+#' @export
 geom_xydiffs <- function(alpha = .2, ...){
   
   QS <- qstat(compute_group_xymeandiffs, 
@@ -178,31 +244,38 @@ geom_xydiffs <- function(alpha = .2, ...){
   
   }
 
-# Layer 6 & 7
+
+######################################
+# Layer 6 & 7 geom_covariance & geom_covariance_label
 compute_covariance <- function(data, scales){
    
+  sign_levels <- c("Neg", "Pos")
+  
   xmean = mean(data$x)
   ymean = mean(data$y)
   xsd = sd(data$x)
   
   data |> 
-    mutate(xdiff = x - mean(x),                                      
+    dplyr::mutate(xdiff = x - mean(x),                                
            ydiff = y - mean(y),   
            area = xdiff * ydiff) |>
-    summarize(mean_area = sum(area)/(n()-1)) |>
-    pull(mean_area) ->
+    dplyr::summarize(mean_area = sum(area)/(n()-1)) |>
+    dplyr::pull(mean_area) ->
   mean_area
+  
+  sign_levels <- c("Neg", "Pos")
   
   data.frame(xmin = xmean, ymin = ymean,
              xmax = xmean + xsd, ymax = ymean + mean_area/xsd,
-             covariance = mean_area,
-             sign = factor(sign(mean_area))) |>
+             covariance = mean_area) %>% 
+    mutate(sign = ifelse(mean_area < 0, "Neg", "Pos"),
+           sign = factor(sign, sign_levels)) |>
     mutate(x = (xmin + xmax)/2,
-          y = (ymin + ymax)/2)
+           y = (ymin + ymax)/2)
   
 }
   
-  
+#' @export
 geom_covariance <- function(...){
   
   QS <- qstat(compute_covariance,
@@ -215,9 +288,10 @@ geom_covariance <- function(...){
 }  
 
 
-
+#' @export
 geom_mean_xdiffXydiff <- geom_covariance
 
+#' @export
 geom_covariance_label <- function(...){
   
   QS <- qstat(compute_covariance,
@@ -232,7 +306,8 @@ geom_covariance_label <- function(...){
 }
   
 
-# SDs
+######################################
+# Layer geom_x_sd
 compute_sdx <- function(data, scales){
   
   ymean <- mean(data$y)
@@ -240,13 +315,14 @@ compute_sdx <- function(data, scales){
   xsd <- sd(data$x)
   
   data.frame(xintercept = xmean + xsd*c(-2,-1,1,2)) |>
-    mutate(xstart = xmean,
+    dplyr::mutate(xstart = xmean,
             ystart = ymean,
             xend = xstart + xsd,
             yend = ystart)
 
     }
 
+#' @export
 geom_x_sd <- function(...){
   
   QS <- qstat(compute_sdx, dropped_aes = c("x", "y"))
@@ -256,7 +332,8 @@ geom_x_sd <- function(...){
   
 }
 
-# SDs
+######################################
+# Layer geom_y_sd
 compute_sdy <- function(data, scales){
   
   ymean <- mean(data$y)
@@ -266,7 +343,7 @@ compute_sdy <- function(data, scales){
 
     }
 
-
+#' @export
 geom_y_sd <- function(...){
   
   QS <- qstat(compute_sdy, 
@@ -280,10 +357,24 @@ geom_y_sd <- function(...){
 }
 ```
 
+``` r
+scale_color_corr <- function(...){scale_color_manual(values = c("lightcoral","mediumturquoise"), breaks = c("Neg", "Pos"), ...)}
+scale_fill_corr <- function(...){scale_fill_manual(values = c("lightcoral","mediumturquoise"), breaks = c("Neg", "Pos"), ...)}
+
+scale_color_fill_corr <- function(){
+  
+  scale_color_fill_corr()
+  
+  
+}
+```
+
 ## Use the layers…
 
 ``` r
+set.seed(12345)
 cars |>
+  sample_n(10) |>
   ggplot() + 
   aes(x = speed, y = dist) +
   geom_point() + # x, y  0
@@ -298,7 +389,7 @@ cars |>
   geom_y_sd()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 
@@ -307,9 +398,37 @@ last_plot() +
       y = dist/sd(dist))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
 ``` r
+
+
+anscombe |>
+  ggplot() + 
+  aes(x = x1, y = y1) +
+  geom_point() + # x, y  0
+  geom_xmean() + # x-bar 1
+  geom_ymean() + # y-bar 2
+  geom_xmeandiff() + # 3
+  geom_ymeandiff() + # 4
+  geom_xydiffs() + # 5
+  geom_covariance() + #6
+  geom_covariance_label() + #7
+  geom_x_sd() + 
+  geom_y_sd() + 
+  scale_fill_corr() + 
+  scale_color_corr()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+
+``` r
+knitrExtra:::chunk_to_r("layers_wrap")
+#> It seems you are currently knitting a Rmd/Qmd file. The parsing of the file will be done in a new R session.
+```
+
+``` r
+#' @export
 layers_covariance <- function(){
   
   list(
@@ -334,9 +453,23 @@ cars |>
   layers_covariance()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+# Minimal viable package
 
 ``` r
+usethis::use_package("ggplot2")
+usethis::use_package("dplyr")
+devtools::check(".")
+devtools::install(pkg = ".", upgrade = "never") 
+```
+
+# Traditional readme
+
+``` r
+rm(list = ls())
+library(ggcorrelate)
+library(tidyverse)
 library(datasauRus)
 
 datasaurus_dozen |> 
@@ -355,7 +488,7 @@ datasaurus_dozen |>
   geom_y_sd() 
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ``` r
 head(datasaurus_dozen)
@@ -380,7 +513,7 @@ datasaurus_dozen |>
   layers_covariance()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
 
@@ -389,7 +522,7 @@ last_plot() +
       y = y/sd(y))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-12-2.png)<!-- -->
 
 ``` r
 
@@ -419,7 +552,4 @@ last_plot() %+%
   anscombe_long
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-8-3.png)<!-- -->
-
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub.
+![](README_files/figure-gfm/unnamed-chunk-12-3.png)<!-- -->
